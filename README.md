@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Hi3DGen RunPod Worker
 
 Production-ready RunPod serverless worker for Hi3DGen 3D generation.
@@ -102,11 +103,11 @@ torchvision
 
 ### 4. Build Docker Image
 
-**Important**: The build context must be the root directory (parent of `hi3dgen-runpod-worker/`) because the Dockerfile needs access to `hy3dgen/` and `hi3dgen/` packages.
+**Important**: This is a standalone repository. The build context is the repository root.
 
 ```bash
-# From the project root directory
-docker build -f hi3dgen-runpod-worker/Dockerfile -t hi3dgen-runpod-worker:latest .
+# From the repository root directory
+docker build -t hi3dgen-runpod-worker:latest .
 ```
 
 The Dockerfile will:
@@ -252,4 +253,3 @@ Ensure models are in the correct directory structure and paths match your code.
 ## License
 
 [Your License Here]
-
