@@ -1,0 +1,6 @@
+# Models directory
+# Place your model weights here:
+# - models/hi3dgen/weights.safetensors
+# - models/zero123/model.safetensors
+# Models are baked into the Docker image at build time.
+
