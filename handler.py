@@ -1,25 +1,31 @@
 import runpod
-import time
-import uuid
-import datetime
+import trimesh
+import tempfile
+import base64
+import os
 
 def handler(event):
-    job_id = event.get("id", "unknown")
-    marker = str(uuid.uuid4())[:8]
-    now = datetime.datetime.utcnow().isoformat()
+    # Create a simple cube
+    mesh = trimesh.creation.box(extents=(1, 1, 1))
 
-    print(f"[Hi3DGen] Job received: {job_id}")
-    print(f"[Hi3DGen] Marker: {marker}")
+    # Write GLB to temp file
+    with tempfile.NamedTemporaryFile(suffix=".glb", delete=False) as f:
+        mesh.export(f.name)
+        glb_path = f.name
 
-    time.sleep(1)
+    # Read & encode
+    with open(glb_path, "rb") as f:
+        glb_bytes = f.read()
+
+    glb_b64 = base64.b64encode(glb_bytes).decode("utf-8")
+
+    os.remove(glb_path)
 
     return {
         "status": "completed",
         "result": {
-            "marker": marker,
-            "server_time_utc": now,
-            "message": "Visible test payload from RunPod worker",
-            "echo_input": event.get("input", {})
+            "mesh_glb_base64": glb_b64,
+            "mesh_name": "Hi3DGen_DummyCube"
         }
     }
 
