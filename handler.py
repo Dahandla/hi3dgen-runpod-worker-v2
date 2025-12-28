@@ -8,16 +8,14 @@ def handler(event):
     # Create a simple cube
     mesh = trimesh.creation.box(extents=(1, 1, 1))
 
-    # Write GLB to temp file
+    # Export to temp GLB
     with tempfile.NamedTemporaryFile(suffix=".glb", delete=False) as f:
         mesh.export(f.name)
         glb_path = f.name
 
-    # Read & encode
+    # Encode GLB
     with open(glb_path, "rb") as f:
-        glb_bytes = f.read()
-
-    glb_b64 = base64.b64encode(glb_bytes).decode("utf-8")
+        glb_b64 = base64.b64encode(f.read()).decode("utf-8")
 
     os.remove(glb_path)
 
