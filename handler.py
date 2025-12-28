@@ -19,13 +19,9 @@ def handler(event):
             "marker": marker,
             "server_time_utc": now,
             "message": "Visible test payload from RunPod worker",
-            "echo_input": event.get("input", {}),
-            "job_id": job_id,
-            "server_time_utc": now,
-            "marker": marker,
+            "echo_input": event.get("input", {})
         }
     }
 
 if __name__ == "__main__":
-    print("Starting Hi3DGen RunPod worker (VISIBLE OUTPUT MODE)")
     runpod.serverless.start({"handler": handler})
