@@ -1,46 +1,59 @@
 """
-RunPod Serverless Handler for Hi3DGen
-
-This is the entry point that RunPod calls.
-Must match the API contract validated by the Blender addon.
+RunPod Serverless Handler - Minimal Dummy Worker
+Creates a simple cube and returns it as base64-encoded GLB.
+This is a minimal test to verify RunPod serverless lifecycle.
 """
 
-import traceback
-from utils.validation import validate_request
-from pipeline.run import run_pipeline
+import base64
+import io
+import trimesh
+import runpod
 
 
 def handler(event):
     """
     RunPod serverless handler entry point.
     
+    Creates a simple cube mesh, exports to GLB, and returns base64-encoded.
+    
     Args:
         event: RunPod event dict with 'input' key
         
     Returns:
-        dict: Response with status, job_id, and result/error
+        dict: Response with status, mesh_glb_base64, and debug info
     """
     try:
-        payload = validate_request(event["input"])
-        result = run_pipeline(payload)
-
+        # Create a simple cube mesh
+        mesh = trimesh.creation.box(extents=(1.0, 1.0, 1.0))
+        
+        # Export to GLB in memory
+        glb_bytes = trimesh.exchange.gltf.export_glb(mesh)
+        
+        # Encode to base64
+        glb_b64 = base64.b64encode(glb_bytes).decode("utf-8")
+        
         return {
-            "status": "completed",
-            "job_id": result["job_id"],
-            "result": {
-                "meta_url": result["meta_url"],
-                "expires_in": 3600
+            "status": "success",
+            "mesh_glb_base64": glb_b64,
+            "debug": {
+                "vertices": len(mesh.vertices),
+                "faces": len(mesh.faces),
+                "glb_size_bytes": len(glb_bytes)
             }
         }
-
+        
     except Exception as e:
+        import traceback
         traceback.print_exc()
         return {
             "status": "failed",
             "error": {
-                "code": "PIPELINE_ERROR",
+                "code": "HANDLER_ERROR",
                 "message": str(e),
                 "retryable": True
             }
         }
 
+
+if __name__ == "__main__":
+    runpod.serverless.start({"handler": handler})
