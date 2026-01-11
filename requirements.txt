@@ -1,4 +1,14 @@
-# Minimal requirements for dummy cube worker
+# Phase 1: Hi3DGen mesh generation (no textures)
 runpod
+torch
+torchvision
 trimesh
 numpy
+pillow
+transformers
+accelerate
+safetensors
+huggingface-hub
+
+# Note: Do NOT include texture-related deps yet
+# (no diffusers, no xformers, no hunyuan3d)

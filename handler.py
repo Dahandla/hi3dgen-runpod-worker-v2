@@ -1,49 +1,165 @@
 """
-RunPod Serverless Handler - Minimal Dummy Worker
-Creates a simple cube and returns it as base64-encoded GLB.
-This is a minimal test to verify RunPod serverless lifecycle.
+RunPod Serverless Handler - Phase 1: Hi3DGen Mesh Generation
+Generates 3D mesh from input image using Hi3DGen pipeline.
+Returns mesh as base64-encoded GLB (no textures, no UVs).
 """
 
+import os
 import base64
-import trimesh
+import io
 import runpod
+import trimesh
+import torch
+from PIL import Image
 
+# -----------------------------------------------------------------------------
+# Environment & cache locations (important for RunPod)
+# -----------------------------------------------------------------------------
+
+os.environ.setdefault("HF_HOME", "/models/hf")
+os.environ.setdefault("TORCH_HOME", "/models/torch")
+os.environ.setdefault("TRANSFORMERS_CACHE", "/models/hf")
+
+# -----------------------------------------------------------------------------
+# Load Hi3DGen ONCE (container startup)
+# -----------------------------------------------------------------------------
+
+print("[Worker] Initializing Hi3DGen pipeline (geometry only)...")
+
+from hi3dgen.pipelines.hi3dgen import Hi3DGenPipeline
+
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+
+try:
+    # Try loading from local path first, fallback to HuggingFace
+    hi3dgen_pipe = Hi3DGenPipeline.from_pretrained(
+        "microsoft/Hi3DGen",
+        torch_dtype=torch.float16 if DEVICE == "cuda" else torch.float32,
+    )
+    hi3dgen_pipe.to(DEVICE)
+    hi3dgen_pipe.eval()
+    print(f"[Worker] Hi3DGen loaded on {DEVICE}")
+except Exception as e:
+    print(f"[Worker][ERROR] Failed to load Hi3DGen: {e}")
+    import traceback
+    traceback.print_exc()
+    hi3dgen_pipe = None
+
+# -----------------------------------------------------------------------------
+# Job handler
+# -----------------------------------------------------------------------------
 
 def handler(event):
     """
-    RunPod serverless handler entry point.
-    
-    Creates a simple cube mesh, exports to GLB, and returns base64-encoded.
-    
-    Args:
-        event: RunPod event dict with 'input' key
-        
-    Returns:
-        dict: Response with status, mesh_glb_base64, and debug info
+    Phase 1:
+    - Input: image_base64 (required), seed (optional), resolution (optional)
+    - Output: GLB (mesh only, no textures)
     """
+    
+    if hi3dgen_pipe is None:
+        return {
+            "status": "failed",
+            "error": {
+                "code": "MODEL_NOT_LOADED",
+                "message": "Hi3DGen pipeline failed to load at startup",
+                "retryable": False
+            }
+        }
+    
     try:
-        # Create a simple cube mesh
-        mesh = trimesh.creation.box(extents=(1.0, 1.0, 1.0))
+        # -------------------------------------------------------------
+        # Parse input
+        # -------------------------------------------------------------
+        input_data = event.get("input", {})
         
-        # Export to GLB in memory
+        image_b64 = input_data.get("image_base64", None)
+        seed = input_data.get("seed", -1)
+        resolution = int(input_data.get("resolution", 512))
+        
+        if image_b64 is None:
+            raise ValueError("Missing image_base64 in input")
+        
+        # Decode image
+        image_bytes = base64.b64decode(image_b64)
+        image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+        
+        print(f"[Worker] Processing image: {image.size}, seed={seed}, resolution={resolution}")
+        
+        # -------------------------------------------------------------
+        # Run Hi3DGen (geometry only)
+        # -------------------------------------------------------------
+        print("[Worker] Running Hi3DGen inference...")
+        
+        with torch.no_grad():
+            result = hi3dgen_pipe.run(
+                image=image,
+                num_samples=1,
+                seed=seed if seed >= 0 else None,
+                formats=['mesh'],
+                preprocess_image=True
+            )
+        
+        # Extract mesh from result
+        if 'mesh' not in result or result['mesh'] is None:
+            raise RuntimeError("Hi3DGen returned empty mesh")
+        
+        mesh_result = result['mesh']
+        
+        # Convert to trimesh if needed
+        if hasattr(mesh_result, 'to_trimesh'):
+            # MeshExtractResult object - convert to trimesh
+            mesh = mesh_result.to_trimesh(transform_pose=False)
+        elif isinstance(mesh_result, trimesh.Trimesh):
+            # Already a trimesh object
+            mesh = mesh_result
+        else:
+            # Try to extract vertices and faces
+            if hasattr(mesh_result, 'vertices') and hasattr(mesh_result, 'faces'):
+                vertices = mesh_result.vertices
+                faces = mesh_result.faces
+                if hasattr(vertices, 'detach'):
+                    vertices = vertices.detach().cpu().numpy()
+                if hasattr(faces, 'detach'):
+                    faces = faces.detach().cpu().numpy()
+                mesh = trimesh.Trimesh(vertices=vertices, faces=faces, process=False)
+            else:
+                raise RuntimeError(f"Unknown mesh format: {type(mesh_result)}")
+        
+        # -------------------------------------------------------------
+        # Clean and prepare mesh
+        # -------------------------------------------------------------
+        mesh.remove_duplicate_faces()
+        mesh.remove_degenerate_faces()
+        mesh.remove_unreferenced_vertices()
+        mesh.rezero()
+        
+        # Compute normals for Blender sanity
+        _ = mesh.vertex_normals
+        
+        # -------------------------------------------------------------
+        # Export GLB (mesh only)
+        # -------------------------------------------------------------
         glb_bytes = trimesh.exchange.gltf.export_glb(mesh)
-        
-        # Encode to base64
         glb_b64 = base64.b64encode(glb_bytes).decode("utf-8")
+        
+        print(f"[Worker] Generated mesh: {len(mesh.vertices)} vertices, {len(mesh.faces)} faces")
         
         return {
             "status": "success",
             "mesh_glb_base64": glb_b64,
             "debug": {
-                "vertices": len(mesh.vertices),
-                "faces": len(mesh.faces),
+                "vertices": int(len(mesh.vertices)),
+                "faces": int(len(mesh.faces)),
+                "device": DEVICE,
                 "glb_size_bytes": len(glb_bytes)
             }
         }
         
     except Exception as e:
         import traceback
-        traceback.print_exc()
+        tb = traceback.format_exc()
+        print(f"[Worker][ERROR] {tb}")
+        
         return {
             "status": "failed",
             "error": {
@@ -53,6 +169,10 @@ def handler(event):
             }
         }
 
+
+# -----------------------------------------------------------------------------
+# RunPod entry
+# -----------------------------------------------------------------------------
 
 if __name__ == "__main__":
     runpod.serverless.start({"handler": handler})
