@@ -9,6 +9,9 @@ transformers
 accelerate
 safetensors
 huggingface-hub
+scikit-image
+spconv
+xformers
 
-# Note: Do NOT include texture-related deps yet
-# (no diffusers, no xformers, no hunyuan3d)
+# Note: spconv and xformers are required for Hi3DGen sparse operations
+# Do NOT include texture-related deps yet (no diffusers, no hunyuan3d)
