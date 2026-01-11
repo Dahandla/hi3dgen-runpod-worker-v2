@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 # Minimal requirements for dummy cube worker
 runpod
 trimesh
 numpy
-=======
-runpod
->>>>>>> 22b166206e16b761343add9d580dbfd18d339e66
