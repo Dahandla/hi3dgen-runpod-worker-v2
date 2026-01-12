@@ -31,11 +31,26 @@ from hi3dgen.pipelines.hi3dgen import Hi3DGenPipeline
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 try:
-    # Load Hi3DGen pipeline (from_pretrained only accepts path and weights_dir)
-    print(f"[Worker] Loading Hi3DGen from microsoft/Hi3DGen on {DEVICE}...")
-    hi3dgen_pipe = Hi3DGenPipeline.from_pretrained(
-        "microsoft/Hi3DGen"
-    )
+    # Load Hi3DGen pipeline from local path (baked into Docker image)
+    # Models should be at /models/hi3dgen with pipeline.json
+    model_path = "/models/hi3dgen"
+    
+    print(f"[Worker] Loading Hi3DGen from {model_path} on {DEVICE}...")
+    
+    # Check if local model exists, fallback to HF if not (for development)
+    import os
+    if os.path.exists(f"{model_path}/pipeline.json"):
+        print(f"[Worker] Found local model at {model_path}")
+        hi3dgen_pipe = Hi3DGenPipeline.from_pretrained(
+            model_path,
+            local_files_only=True
+        )
+    else:
+        print(f"[Worker] Local model not found, attempting HuggingFace (may require auth)...")
+        # This will fail if not authenticated, but provides clearer error
+        hi3dgen_pipe = Hi3DGenPipeline.from_pretrained(
+            "microsoft/Hi3DGen"
+        )
     
     # Move to device and set eval mode
     hi3dgen_pipe.to(DEVICE)
