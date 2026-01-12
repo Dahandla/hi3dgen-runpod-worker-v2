@@ -44,21 +44,31 @@ COPY hi3dgen/ ./hi3dgen/
 
 # -----------------------------------------------------------------------------
 # Copy Hi3DGen model weights (if available)
-# If you have Hi3DGen models locally, uncomment and adjust path:
+# 
+# STEP 1: Run download script first:
+#   Windows: download_models.bat
+#   Linux/Mac: bash download_models.sh
+#   Or: python download_models.py
+#
+# STEP 2: Uncomment the line below after models are downloaded:
 # COPY Hi3DGen/ /models/hi3dgen/
 # 
-# Expected structure:
-# /models/hi3dgen/
+# Expected structure after download:
+# Hi3DGen/
 #   ├── pipeline.json
 #   ├── models/
-#   │   ├── sparse_structure_flow_model.json
-#   │   ├── sparse_structure_flow_model.safetensors
-#   │   ├── sparse_structure_decoder.json
-#   │   ├── sparse_structure_decoder.safetensors
-#   │   ├── slat_flow_model.json
-#   │   ├── slat_flow_model.safetensors
-#   │   ├── slat_decoder_mesh.json
-#   │   └── slat_decoder_mesh.safetensors
+#   │   ├── sparse_structure_flow_model/
+#   │   │   ├── sparse_structure_flow_model.json
+#   │   │   └── sparse_structure_flow_model.safetensors
+#   │   ├── sparse_structure_decoder/
+#   │   │   ├── sparse_structure_decoder.json
+#   │   │   └── sparse_structure_decoder.safetensors
+#   │   ├── slat_flow_model/
+#   │   │   ├── slat_flow_model.json
+#   │   │   └── slat_flow_model.safetensors
+#   │   └── slat_decoder_mesh/
+#   │       ├── slat_decoder_mesh.json
+#   │       └── slat_decoder_mesh.safetensors
 #   └── ...
 
 # -----------------------------------------------------------------------------
