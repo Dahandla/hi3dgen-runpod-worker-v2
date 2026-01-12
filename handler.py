@@ -31,14 +31,17 @@ from hi3dgen.pipelines.hi3dgen import Hi3DGenPipeline
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 try:
-    # Try loading from local path first, fallback to HuggingFace
+    # Load Hi3DGen pipeline (from_pretrained only accepts path and weights_dir)
+    print(f"[Worker] Loading Hi3DGen from microsoft/Hi3DGen on {DEVICE}...")
     hi3dgen_pipe = Hi3DGenPipeline.from_pretrained(
-        "microsoft/Hi3DGen",
-        torch_dtype=torch.float16 if DEVICE == "cuda" else torch.float32,
+        "microsoft/Hi3DGen"
     )
+    
+    # Move to device and set eval mode
     hi3dgen_pipe.to(DEVICE)
     hi3dgen_pipe.eval()
-    print(f"[Worker] Hi3DGen loaded on {DEVICE}")
+    
+    print(f"[Worker] Hi3DGen loaded successfully on {DEVICE}")
 except Exception as e:
     print(f"[Worker][ERROR] Failed to load Hi3DGen: {e}")
     import traceback
