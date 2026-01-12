@@ -43,9 +43,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY hi3dgen/ ./hi3dgen/
 
 # -----------------------------------------------------------------------------
-# Copy Hi3DGen model weights
+# Copy Hi3DGen model weights (downloaded into hi3dgen/ subdirectories)
 # Models should be downloaded using download_models.py first
-COPY Hi3DGen/ /models/hi3dgen/
+# The download script places models in: hi3dgen/trellis-normal-v0-1/, hi3dgen/yoso-normal-v1-8-1/, hi3dgen/BiRefNet/
+COPY hi3dgen/trellis-normal-v0-1/ /models/hi3dgen/trellis-normal-v0-1/
+COPY hi3dgen/yoso-normal-v1-8-1/ /models/hi3dgen/yoso-normal-v1-8-1/
+COPY hi3dgen/BiRefNet/ /models/hi3dgen/BiRefNet/
 # 
 # Expected structure after download:
 # Hi3DGen/
