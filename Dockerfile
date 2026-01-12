@@ -43,30 +43,21 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY hi3dgen/ ./hi3dgen/
 
 # -----------------------------------------------------------------------------
-# Copy Hi3DGen model weights (downloaded into hi3dgen/ subdirectories)
-# Models should be downloaded using download_models.py first
-# The download script places models in: hi3dgen/trellis-normal-v0-1/, hi3dgen/yoso-normal-v1-8-1/, hi3dgen/BiRefNet/
-COPY hi3dgen/trellis-normal-v0-1/ /models/hi3dgen/trellis-normal-v0-1/
-COPY hi3dgen/yoso-normal-v1-8-1/ /models/hi3dgen/yoso-normal-v1-8-1/
-COPY hi3dgen/BiRefNet/ /models/hi3dgen/BiRefNet/
-# 
-# Expected structure after download:
-# Hi3DGen/
-#   ├── pipeline.json
-#   ├── models/
-#   │   ├── sparse_structure_flow_model/
-#   │   │   ├── sparse_structure_flow_model.json
-#   │   │   └── sparse_structure_flow_model.safetensors
-#   │   ├── sparse_structure_decoder/
-#   │   │   ├── sparse_structure_decoder.json
-#   │   │   └── sparse_structure_decoder.safetensors
-#   │   ├── slat_flow_model/
-#   │   │   ├── slat_flow_model.json
-#   │   │   └── slat_flow_model.safetensors
-#   │   └── slat_decoder_mesh/
-#   │       ├── slat_decoder_mesh.json
-#   │       └── slat_decoder_mesh.safetensors
-#   └── ...
+# Model weights handling
+# -----------------------------------------------------------------------------
+# Models are NOT copied into the image (they're too large for GitHub).
+# Instead, handler.py will download them from HuggingFace at container startup.
+# This happens once per container, so subsequent requests are fast.
+#
+# If you want to bake models into the image (faster cold starts):
+# 1. Download models locally using download_models.py
+# 2. Uncomment the COPY commands below
+# 3. Build locally: docker build -t yourname/hi3dgen-worker:tag .
+# 4. Push to Docker Hub and update RunPod to use that image
+#
+# COPY hi3dgen/trellis-normal-v0-1/ /models/hi3dgen/trellis-normal-v0-1/
+# COPY hi3dgen/yoso-normal-v1-8-1/ /models/hi3dgen/yoso-normal-v1-8-1/
+# COPY hi3dgen/BiRefNet/ /models/hi3dgen/BiRefNet/
 
 # -----------------------------------------------------------------------------
 # Copy worker code
