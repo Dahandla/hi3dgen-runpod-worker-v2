@@ -12,6 +12,8 @@ huggingface-hub
 scikit-image
 spconv
 xformers
+tqdm
 
 # Note: spconv and xformers are required for Hi3DGen sparse operations
+# tqdm is used for progress bars in Hi3DGen
 # Do NOT include texture-related deps yet (no diffusers, no hunyuan3d)

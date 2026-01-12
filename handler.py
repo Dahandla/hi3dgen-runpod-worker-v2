@@ -94,12 +94,14 @@ def handler(event):
         print("[Worker] Running Hi3DGen inference...")
         
         with torch.no_grad():
+            # For Phase 1, skip image preprocessing (BiRefNet) to avoid dependency issues
+            # Preprocessing can be enabled later when BiRefNet model is available
             result = hi3dgen_pipe.run(
                 image=image,
                 num_samples=1,
                 seed=seed if seed >= 0 else None,
                 formats=['mesh'],
-                preprocess_image=True
+                preprocess_image=False  # Skip BiRefNet preprocessing for Phase 1
             )
         
         # Extract mesh from result
