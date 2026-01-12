@@ -77,9 +77,8 @@ try:
                 "Stable-X/trellis-normal-v0-1"
             )
     
-    # Move to device and set eval mode
+    # Move to device (pipeline handles eval mode internally)
     hi3dgen_pipe.to(DEVICE)
-    hi3dgen_pipe.eval()
     
     print(f"[Worker] Hi3DGen loaded successfully on {DEVICE}")
 except Exception as e:
