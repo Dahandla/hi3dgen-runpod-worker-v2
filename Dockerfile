@@ -43,15 +43,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY hi3dgen/ ./hi3dgen/
 
 # -----------------------------------------------------------------------------
-# Copy Hi3DGen model weights (if available)
-# 
-# STEP 1: Run download script first:
-#   Windows: download_models.bat
-#   Linux/Mac: bash download_models.sh
-#   Or: python download_models.py
-#
-# STEP 2: Uncomment the line below after models are downloaded:
-# COPY Hi3DGen/ /models/hi3dgen/
+# Copy Hi3DGen model weights
+# Models should be downloaded using download_models.py first
+COPY Hi3DGen/ /models/hi3dgen/
 # 
 # Expected structure after download:
 # Hi3DGen/
