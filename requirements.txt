@@ -1,7 +1,5 @@
 # Phase 1: Hi3DGen mesh generation (no textures)
 runpod
-torch
-torchvision
 trimesh
 numpy
 pillow
@@ -10,10 +8,11 @@ accelerate
 safetensors
 huggingface-hub
 scikit-image
-spconv
+spconv-cu121
 xformers
 tqdm
 
-# Note: spconv and xformers are required for Hi3DGen sparse operations
+# Note: spconv-cu121 (CUDA version) is required for Hi3DGen sparse operations
+# xformers is used for optimized attention
 # tqdm is used for progress bars in Hi3DGen
 # Do NOT include texture-related deps yet (no diffusers, no hunyuan3d)

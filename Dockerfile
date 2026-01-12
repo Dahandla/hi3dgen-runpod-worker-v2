@@ -1,13 +1,10 @@
-FROM python:3.10-slim
+FROM nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04
 
-# -----------------------------------------------------------------------------
-# Environment
-# -----------------------------------------------------------------------------
-
-ENV PYTHONUNBUFFERED=1 \
-    HF_HOME=/models/hf \
-    TORCH_HOME=/models/torch \
-    TRANSFORMERS_CACHE=/models/hf
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+ENV HF_HOME=/models/hf
+ENV TORCH_HOME=/models/torch
+ENV TRANSFORMERS_CACHE=/models/hf
 
 WORKDIR /app
 
@@ -17,11 +14,15 @@ WORKDIR /app
 
 RUN apt-get update && apt-get install -y \
     build-essential \
+    python3 \
+    python3-pip \
     git \
     libgl1 \
     libglib2.0-0 \
     libstdc++6 \
     && rm -rf /var/lib/apt/lists/*
+
+RUN ln -s /usr/bin/python3 /usr/bin/python
 
 # -----------------------------------------------------------------------------
 # Create model directories
@@ -30,10 +31,15 @@ RUN apt-get update && apt-get install -y \
 RUN mkdir -p /models/hf /models/torch /models/hi3dgen
 
 # -----------------------------------------------------------------------------
-# Python dependencies
+# Python dependencies (CUDA torch!)
 # -----------------------------------------------------------------------------
 
 COPY requirements.txt .
+RUN pip install --no-cache-dir \
+    torch==2.2.2+cu121 \
+    torchvision==0.17.2+cu121 \
+    --index-url https://download.pytorch.org/whl/cu121
+
 RUN pip install --no-cache-dir -r requirements.txt
 
 # -----------------------------------------------------------------------------
@@ -64,6 +70,16 @@ COPY hi3dgen/ ./hi3dgen/
 # -----------------------------------------------------------------------------
 
 COPY handler.py .
+
+# -----------------------------------------------------------------------------
+# Hard sanity check (fails build if CUDA missing)
+# -----------------------------------------------------------------------------
+
+RUN python - <<'EOF'
+import torch
+assert torch.cuda.is_available(), "CUDA NOT AVAILABLE — BUILD INVALID"
+print("CUDA OK:", torch.cuda.get_device_name(0))
+EOF
 
 # -----------------------------------------------------------------------------
 # RunPod serverless entry
