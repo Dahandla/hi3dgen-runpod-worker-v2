@@ -32,25 +32,50 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 try:
     # Load Hi3DGen pipeline from local path (baked into Docker image)
-    # Models should be at /models/hi3dgen with pipeline.json
+    # Models should be at /models/hi3dgen with subdirectories:
+    # - trellis-normal-v0-1/
+    # - yoso-normal-v1-8-1/
+    # - BiRefNet/
     model_path = "/models/hi3dgen"
     
     print(f"[Worker] Loading Hi3DGen from {model_path} on {DEVICE}...")
     
-    # Check if local model exists, fallback to HF if not (for development)
+    # Check if local models exist
     import os
-    if os.path.exists(f"{model_path}/pipeline.json"):
-        print(f"[Worker] Found local model at {model_path}")
+    trellis_path = f"{model_path}/trellis-normal-v0-1"
+    yoso_path = f"{model_path}/yoso-normal-v1-8-1"
+    
+    # Try yoso first (newer), then trellis as fallback
+    if os.path.exists(f"{yoso_path}/pipeline.json"):
+        print(f"[Worker] Found yoso model at {yoso_path}")
+        hi3dgen_pipe = Hi3DGenPipeline.from_pretrained(
+            yoso_path,
+            local_files_only=True
+        )
+    elif os.path.exists(f"{trellis_path}/pipeline.json"):
+        print(f"[Worker] Found trellis model at {trellis_path}")
+        hi3dgen_pipe = Hi3DGenPipeline.from_pretrained(
+            trellis_path,
+            local_files_only=True
+        )
+    elif os.path.exists(f"{model_path}/pipeline.json"):
+        # Fallback: models at root level
+        print(f"[Worker] Found model at {model_path}")
         hi3dgen_pipe = Hi3DGenPipeline.from_pretrained(
             model_path,
             local_files_only=True
         )
     else:
-        print(f"[Worker] Local model not found, attempting HuggingFace (may require auth)...")
-        # This will fail if not authenticated, but provides clearer error
-        hi3dgen_pipe = Hi3DGenPipeline.from_pretrained(
-            "microsoft/Hi3DGen"
-        )
+        print(f"[Worker] Local models not found, attempting HuggingFace...")
+        # Try Stable-X repos (may require auth)
+        try:
+            hi3dgen_pipe = Hi3DGenPipeline.from_pretrained(
+                "Stable-X/yoso-normal-v1-8-1"
+            )
+        except:
+            hi3dgen_pipe = Hi3DGenPipeline.from_pretrained(
+                "Stable-X/trellis-normal-v0-1"
+            )
     
     # Move to device and set eval mode
     hi3dgen_pipe.to(DEVICE)

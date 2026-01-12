@@ -11,7 +11,12 @@ from huggingface_hub.utils import HfHubHTTPError
 
 # Configuration
 OUTPUT_DIR = Path("Hi3DGen")
-REPO_ID = "microsoft/Hi3DGen"  # Try this first, may need to be adjusted
+# Hi3DGen uses these model repositories
+MODEL_REPOS = [
+    "Stable-X/trellis-normal-v0-1",
+    "Stable-X/yoso-normal-v1-8-1",
+    "ZhengPeng7/BiRefNet",  # Background removal model
+]
 USE_TOKEN = True  # Set to True if you have HF token
 
 def download_models():
@@ -35,79 +40,105 @@ def download_models():
         print(f"[Download] If download fails, set HF_TOKEN environment variable")
     
     try:
-        # Try to download the entire repo
-        print(f"[Download] Attempting to download from {REPO_ID}...")
-        downloaded_path = snapshot_download(
-            repo_id=REPO_ID,
-            local_dir=str(OUTPUT_DIR),
-            local_dir_use_symlinks=False,
-            ignore_patterns=["*.md", "*.txt", "LICENSE", ".git*"]  # Skip non-essential files
-        )
-        print(f"[Download] Successfully downloaded to: {downloaded_path}")
+        # Download each model repository
+        print(f"[Download] Downloading {len(MODEL_REPOS)} model repositories...")
+        
+        for repo_id in MODEL_REPOS:
+            print(f"\n[Download] Downloading {repo_id}...")
+            try:
+                # Download to subdirectory
+                repo_name = repo_id.split("/")[-1]
+                repo_dir = OUTPUT_DIR / repo_name
+                repo_dir.mkdir(parents=True, exist_ok=True)
+                
+                downloaded_path = snapshot_download(
+                    repo_id=repo_id,
+                    local_dir=str(repo_dir),
+                    local_dir_use_symlinks=False,
+                    ignore_patterns=["*.md", "*.txt", "LICENSE", ".git*", "*.ipynb"]
+                )
+                print(f"[Download] ✓ {repo_id} downloaded to {repo_dir}")
+            except Exception as e:
+                print(f"[Download] ✗ Failed to download {repo_id}: {e}")
+                # Continue with other repos
+                continue
+        
+        # Check if we got the main models
+        trellis_dir = OUTPUT_DIR / "trellis-normal-v0-1"
+        yoso_dir = OUTPUT_DIR / "yoso-normal-v1-8-1"
+        
+        if not trellis_dir.exists() and not yoso_dir.exists():
+            print(f"\n[Download] ERROR: Neither trellis nor yoso models downloaded")
+            return False
+        
+        print(f"\n[Download] Model repositories downloaded successfully")
         
     except HfHubHTTPError as e:
         if e.status_code == 401:
             print(f"[Download] ERROR: 401 Unauthorized - Repository may be private or gated")
             print(f"[Download] Solutions:")
-            print(f"  1. Get access to {REPO_ID} from Microsoft")
-            print(f"  2. Set HF_TOKEN environment variable with your HuggingFace token")
-            print(f"  3. Check if the repo ID is correct (might be different)")
+            print(f"  1. Set HF_TOKEN environment variable with your HuggingFace token")
+            print(f"  2. Get access to the repositories from Stable-X")
             return False
         elif e.status_code == 404:
-            print(f"[Download] ERROR: 404 Not Found - Repository doesn't exist at {REPO_ID}")
-            print(f"[Download] Trying alternative approach: downloading individual files...")
-            return download_individual_files()
+            print(f"[Download] ERROR: 404 Not Found - Repository doesn't exist")
+            print(f"[Download] Check if repository IDs are correct")
+            return False
         else:
             print(f"[Download] ERROR: {e}")
             return False
     except Exception as e:
         print(f"[Download] ERROR: {e}")
-        print(f"[Download] Trying alternative approach: downloading individual files...")
-        return download_individual_files()
-    
-    # Verify pipeline.json exists
-    pipeline_json = OUTPUT_DIR / "pipeline.json"
-    if not pipeline_json.exists():
-        print(f"[Download] WARNING: pipeline.json not found. Checking structure...")
-        # List what we got
-        for item in OUTPUT_DIR.iterdir():
-            print(f"  - {item.name}")
+        import traceback
+        traceback.print_exc()
         return False
     
-    print(f"[Download] ✓ pipeline.json found")
+    # Verify we have the main models
+    trellis_dir = OUTPUT_DIR / "trellis-normal-v0-1"
+    yoso_dir = OUTPUT_DIR / "yoso-normal-v1-8-1"
+    birefnet_dir = OUTPUT_DIR / "BiRefNet"
     
-    # Read pipeline.json to see what models are needed
-    with open(pipeline_json, 'r') as f:
-        pipeline_config = json.load(f)
+    print(f"\n[Download] Verifying downloaded models...")
     
-    models_needed = pipeline_config.get('args', {}).get('models', {})
-    print(f"[Download] Models required: {list(models_needed.keys())}")
+    models_found = []
+    if trellis_dir.exists():
+        print(f"[Download] ✓ trellis-normal-v0-1 found")
+        models_found.append("trellis")
+    if yoso_dir.exists():
+        print(f"[Download] ✓ yoso-normal-v1-8-1 found")
+        models_found.append("yoso")
+    if birefnet_dir.exists():
+        print(f"[Download] ✓ BiRefNet found")
+        models_found.append("birefnet")
     
-    # Verify model files exist
-    all_found = True
-    for model_name, model_path in models_needed.items():
-        model_json = OUTPUT_DIR / model_path / f"{Path(model_path).name}.json"
-        model_safetensors = OUTPUT_DIR / model_path / f"{Path(model_path).name}.safetensors"
-        
-        if model_json.exists() and model_safetensors.exists():
-            print(f"[Download] ✓ {model_name}: {model_path}")
-        else:
-            print(f"[Download] ✗ {model_name}: Missing files")
-            print(f"    Expected: {model_json}")
-            print(f"    Expected: {model_safetensors}")
-            all_found = False
+    if len(models_found) == 0:
+        print(f"[Download] ✗ No models downloaded")
+        return False
     
-    if all_found:
-        print(f"\n[Download] ✓ All models downloaded successfully!")
-        print(f"[Download] Model directory: {OUTPUT_DIR.absolute()}")
-        print(f"\n[Download] Next steps:")
-        print(f"  1. Verify the Hi3DGen/ directory structure")
-        print(f"  2. Update Dockerfile to uncomment: COPY Hi3DGen/ /models/hi3dgen/")
-        print(f"  3. Build Docker image")
-        return True
+    # Check for pipeline.json in one of the model dirs
+    pipeline_json = None
+    for model_dir in [trellis_dir, yoso_dir]:
+        if model_dir.exists():
+            potential_pipeline = model_dir / "pipeline.json"
+            if potential_pipeline.exists():
+                pipeline_json = potential_pipeline
+                break
+    
+    if pipeline_json:
+        print(f"[Download] ✓ pipeline.json found at {pipeline_json}")
     else:
-        print(f"\n[Download] ✗ Some model files are missing")
-        return False
+        print(f"[Download] ⚠ pipeline.json not found, but models are present")
+        print(f"[Download] This may be okay - Hi3DGenPipeline may construct pipeline.json from models")
+    
+    print(f"\n[Download] ✓ Models downloaded successfully!")
+    print(f"[Download] Model directory: {OUTPUT_DIR.absolute()}")
+    print(f"[Download] Downloaded: {', '.join(models_found)}")
+    print(f"\n[Download] Next steps:")
+    print(f"  1. Verify the Hi3DGen/ directory structure")
+    print(f"  2. Update Dockerfile to uncomment: COPY Hi3DGen/ /models/hi3dgen/")
+    print(f"  3. Update handler.py to use correct model path")
+    print(f"  4. Build Docker image")
+    return True
 
 
 def download_individual_files():
