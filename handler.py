@@ -115,11 +115,18 @@ def handler(event):
         input_data = event.get("input", {})
         
         image_b64 = input_data.get("image_base64", None)
-        seed = input_data.get("seed", -1)
+        seed_raw = input_data.get("seed", -1)
         resolution = int(input_data.get("resolution", 512))
         
         if image_b64 is None:
             raise ValueError("Missing image_base64 in input")
+        
+        # Handle seed: if < 0, generate random seed (Hi3DGen doesn't handle None)
+        if seed_raw is None or seed_raw < 0:
+            import random
+            seed = random.randint(0, 2**31 - 1)
+        else:
+            seed = int(seed_raw)
         
         # Decode image
         image_bytes = base64.b64decode(image_b64)
@@ -138,7 +145,7 @@ def handler(event):
             result = hi3dgen_pipe.run(
                 image=image,
                 num_samples=1,
-                seed=seed if seed >= 0 else None,
+                seed=seed,  # Always pass a valid integer seed
                 formats=['mesh'],
                 preprocess_image=False  # Skip BiRefNet preprocessing for Phase 1
             )
