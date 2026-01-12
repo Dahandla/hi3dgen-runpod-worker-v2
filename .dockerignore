@@ -1,0 +1,43 @@
+# Exclude model directories (too large, downloaded at runtime)
+hi3dgen/trellis-normal-v0-1/
+hi3dgen/yoso-normal-v1-8-1/
+hi3dgen/BiRefNet/
+
+# Exclude Python cache
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+.Python
+
+# Exclude build artifacts
+*.egg-info/
+dist/
+build/
+
+# Exclude test files
+test_*.py
+*_test.py
+tests/
+
+# Exclude logs
+*.log
+logs/
+
+# Exclude IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Exclude git
+.git/
+.gitignore
+
+# Exclude download scripts (not needed in image)
+download_models.py
+download_models.bat
+download_models.sh
+
+# Exclude build logs
+build-logs-*.txt
