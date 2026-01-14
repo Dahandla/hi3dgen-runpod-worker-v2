@@ -2,7 +2,7 @@
 # Note: torch and torchvision are installed separately in Dockerfile to ensure CUDA versions
 runpod
 trimesh
-numpy
+numpy<2.0.0  # Pin to NumPy 1.x - NumPy 2.x breaks compatibility with compiled modules
 pillow
 transformers
 accelerate
@@ -10,10 +10,11 @@ safetensors
 huggingface-hub
 scikit-image
 spconv-cu121
-xformers
+# xformers removed - incompatible with PyTorch 2.2.2+cu121 (built for 2.9.1+cu128)
+# Hi3DGen will fall back to standard attention if xformers unavailable
 tqdm
 
 # Note: spconv-cu121 (CUDA version) is required for Hi3DGen sparse operations
-# xformers is used for optimized attention
+# xformers removed due to PyTorch version mismatch - Hi3DGen supports fallback attention
 # tqdm is used for progress bars in Hi3DGen
 # Do NOT include texture-related deps yet (no diffusers, no hunyuan3d)

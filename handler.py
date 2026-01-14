@@ -26,6 +26,14 @@ os.environ.setdefault("TRANSFORMERS_CACHE", "/models/hf")
 
 print("[Worker] Initializing Hi3DGen pipeline (geometry only)...")
 
+# Suppress warnings
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning)
+warnings.filterwarnings("ignore", category=FutureWarning)
+
+# Import Hi3DGen pipeline
+# Note: If xformers is installed but incompatible, this import may fail
+# Solution: Rebuild Docker image without xformers in requirements.txt
 from hi3dgen.pipelines.hi3dgen import Hi3DGenPipeline
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
@@ -44,6 +52,8 @@ try:
     import os
     trellis_path = f"{model_path}/trellis-normal-v0-1"
     yoso_path = f"{model_path}/yoso-normal-v1-8-1"
+    
+    hi3dgen_pipe = None
     
     # Try yoso first (newer), then trellis as fallback
     if os.path.exists(f"{yoso_path}/pipeline.json"):
@@ -66,16 +76,16 @@ try:
             local_files_only=True
         )
     else:
-        print(f"[Worker] Local models not found, attempting HuggingFace...")
-        # Try Stable-X repos (may require auth)
-        try:
-            hi3dgen_pipe = Hi3DGenPipeline.from_pretrained(
-                "Stable-X/yoso-normal-v1-8-1"
-            )
-        except:
-            hi3dgen_pipe = Hi3DGenPipeline.from_pretrained(
-                "Stable-X/trellis-normal-v0-1"
-            )
+        print(f"[Worker][ERROR] No local models found at {model_path}")
+        print(f"[Worker][ERROR] Expected one of:")
+        print(f"[Worker][ERROR]   - {yoso_path}/pipeline.json")
+        print(f"[Worker][ERROR]   - {trellis_path}/pipeline.json")
+        print(f"[Worker][ERROR]   - {model_path}/pipeline.json")
+        print(f"[Worker][ERROR] HuggingFace download disabled - models must be baked into image")
+        raise FileNotFoundError(f"No Hi3DGen models found at {model_path}")
+    
+    if hi3dgen_pipe is None:
+        raise RuntimeError("Failed to load Hi3DGen pipeline - pipeline is None")
     
     # Move to device (pipeline handles eval mode internally)
     hi3dgen_pipe.to(DEVICE)
