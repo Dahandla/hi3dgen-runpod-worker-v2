@@ -1,4 +1,5 @@
 # Phase 1: Hi3DGen mesh generation (no textures)
+# Note: torch and torchvision are installed separately in Dockerfile to ensure CUDA versions
 runpod
 trimesh
 numpy

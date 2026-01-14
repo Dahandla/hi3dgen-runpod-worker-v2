@@ -35,12 +35,21 @@ RUN mkdir -p /models/hf /models/torch /models/hi3dgen
 # -----------------------------------------------------------------------------
 
 COPY requirements.txt .
+# Install torch and torchvision first with CUDA support
 RUN pip install --no-cache-dir \
     torch==2.2.2+cu121 \
     torchvision==0.17.2+cu121 \
     --index-url https://download.pytorch.org/whl/cu121
 
+# Install other requirements (spconv may try to upgrade torch)
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Force reinstall torch/torchvision to ensure correct CUDA versions
+# This overrides any upgrades that spconv or other packages may have done
+RUN pip install --no-cache-dir --force-reinstall --no-deps \
+    torch==2.2.2+cu121 \
+    torchvision==0.17.2+cu121 \
+    --index-url https://download.pytorch.org/whl/cu121
 
 # -----------------------------------------------------------------------------
 # Copy Hi3DGen Python code
@@ -72,13 +81,15 @@ COPY hi3dgen/ ./hi3dgen/
 COPY handler.py .
 
 # -----------------------------------------------------------------------------
-# Hard sanity check (fails build if CUDA missing)
+# Verify torch installation (CUDA check happens at runtime, not build time)
 # -----------------------------------------------------------------------------
 
 RUN python - <<'EOF'
 import torch
-assert torch.cuda.is_available(), "CUDA NOT AVAILABLE — BUILD INVALID"
-print("CUDA OK:", torch.cuda.get_device_name(0))
+print(f"PyTorch version: {torch.__version__}")
+print(f"CUDA available in build: {torch.cuda.is_available()}")
+print("Note: CUDA will be available at runtime on GPU-enabled RunPod workers")
+# Don't fail build - CUDA isn't available during Docker build
 EOF
 
 # -----------------------------------------------------------------------------
